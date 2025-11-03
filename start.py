@@ -1,7 +1,27 @@
 from scapy.all import *
 
-addr = "192.168.1.1/24" #put own router address and subnet
-dns_addr = "192.168.1.1"   
+addr = "" 
+dns_addr = "" 
+
+with open(".config") as f:
+    for raw in f:
+        line = raw.strip()
+        # Skip empty lines and comments
+        if not line or line.startswith("#"):
+            continue
+        # Only process lines with a key=value format
+        if "=" not in line:
+            continue
+        key, value = [x.strip() for x in line.split("=", 1)]
+        # Drop inline comments after the value, if any
+        if "#" in value:
+            value = value.split("#", 1)[0].strip()
+        if key == "address":
+            addr = value
+        elif key == "subnet":
+            addr += "/" + value
+        elif key == "dns":
+            dns_addr = value
 
 # ARP packet to ping active active devices 
 p = Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=addr)
