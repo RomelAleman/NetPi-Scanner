@@ -16,7 +16,7 @@ Clone the repository
 git clone https://github.com/RomelAleman/NetPi-Scanner.git
 ```
 
-Remove the .git file
+Remove the .git file (Don't remove for development)
 ```
 cd path/to/NetPi-Scanner && rm .git
 ```
