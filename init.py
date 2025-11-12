@@ -7,6 +7,7 @@
 
 import subprocess, re
 import WebUI.host
+import socket
 
 # subprocess call to install required packages
 def package_installation():
@@ -24,6 +25,12 @@ def package_installation():
 # Initial configuration for user to add there adresses and subnet
 # Defaults to most common home network configurations if not provided
 def config_initialization():
+
+    # Find current ip address for finding default router
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("1.1.1.1", 80))
+    ip = s.getsockname()[0]
+    s.close()
     
     print("\nWelcome to NetPi-Scanner setup!")
     print("-------------------------------\n")
@@ -36,16 +43,16 @@ def config_initialization():
 
     # default values
     defaults = [
-        "192.168.0.1",
-        "24",
-        "192.168.0.1"
+        '.'.join(ip.split('.')[:-1]) + '.1',  # default router based on current ip
+        '24',
+        '.'.join(ip.split('.')[:-1]) + '.1'   # default dns based on current ip
     ]
 
     # configuration prompts
     configurations = [
-        "IPV4 router address (192.168.0.1): ",
+        f"IPV4 router address ({defaults[0]}): ",
         "desired subnet (24): ",
-        "IPV4 router dns (192.168.0.1): "
+        f"IPV4 router dns ({defaults[2]}): "
     ]
 
     # open file for writing configurations to config file
