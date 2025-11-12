@@ -1,0 +1,203 @@
+#!/usr/bin/env python3
+
+"""
+- Performance measurement utilities for NetPi-Scanner
+- Measures and logs response times, bandwidth, and latency for scanned devices
+"""
+from scapy.all import sr1, IP, ICMP
+import os
+import time
+import csv
+import socket
+import statistics
+
+def load_devices(filename='CSV/saved_devices.csv'):
+    devices = []
+    try:
+        with open(filename, 'r', newline='') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                devices.append(row)
+    except FileNotFoundError:
+        print(f"File {filename} not found. No devices to load.")
+    return devices
+
+
+# global verbosity flag (default False)
+VERBOSE = False
+
+def log_performance_data(devices, filename='CSV/performance_log.csv'):
+    # Log performance data to a CSV file
+    # if CSV directory does not exist, create it
+    dirname = os.path.dirname(filename)
+    if dirname and not os.path.exists(dirname):
+        os.makedirs(dirname, exist_ok=True)
+
+    with open(filename, 'w', newline='') as f:
+        fieldnames = [
+            'IP',
+            'icmp_sent', 'icmp_received', 'icmp_loss_pct', 'rtt_avg',
+            'tcp_port', 'tcp_connect',
+            'bandwidth_kbps'
+        ]
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        
+        for device in devices:
+            ip = device['IP']
+            writer.writerow({
+                'IP': ip,
+                'icmp_sent': device.get('icmp_sent', ''),
+                'icmp_received': device.get('icmp_received', ''),
+                'icmp_loss_pct': device.get('icmp_loss_pct', ''),
+                'rtt_avg': device.get('rtt_avg', ''),
+                'tcp_port': device.get('tcp_port', ''),
+                'tcp_connect': device.get('tcp_connect', ''),
+                'bandwidth_kbps': device.get('bandwidth_kbps', ''),
+                
+            })
+
+def measure_performance(devices):
+    # Measure performance metrics for each device
+    total = len(devices)
+    for i, device in enumerate(devices):
+        devices[i] = measure_device(device, i, total)
+    return devices
+
+
+def measure_device(device, i, total):
+    ip = device['IP']
+    # Progress: quiet mode shows only the IP; verbose shows index and label
+    if VERBOSE:
+        print(f"[{i+1}/{total}] Working on {ip}", flush=True)
+    else:
+        print(f"{ip}", flush=True)
+
+    # ICMP ping measurements (uses scapy)
+    icmp_results = perform_icmp_pings(ip, count=4, timeout=2)
+    device.update(icmp_results)
+    sent = icmp_results.get('icmp_sent', 0)
+    loss = icmp_results.get('icmp_loss_pct')
+    avg = icmp_results.get('rtt_avg')
+    if VERBOSE:
+        if sent == 0:
+            print(f"  ICMP: no-icmp")
+        else:
+            print(f"  ICMP: loss={loss}%, avg={avg}ms")
+
+    # TCP connect timing (only port 80)
+    tcp_time = tcp_connect_time(ip, 80, timeout=2)
+    device['tcp_port'] = 80 if tcp_time is not None else None
+    device['tcp_connect'] = tcp_time
+    if VERBOSE:
+        if tcp_time is None:
+            print(f"  TCP 80: closed/timeout")
+        else:
+            print(f"  TCP 80: {tcp_time} ms")
+
+    # bandwidth measurement (only if tcp connect succeeded)
+    bandwidth = None
+    if tcp_time is not None:
+        bandwidth = measure_bandwidth_for_device(ip, 80)
+    device['bandwidth_kbps'] = bandwidth
+    if VERBOSE:
+        print(f"  bandwidth_kbps: {bandwidth}")
+
+    return device
+
+
+def print_performance_summary(devices):
+    print("Performance Summary:")
+    print(f"{ 'IP':<15} {'loss%':<7} {'rtt_avg':<10} {'bandwidth_kbps':<15} {'tcp_port':<8} {'tcp':<8}")
+    for device in devices:
+        ip = device['IP']
+        loss = device.get('icmp_loss_pct', 'N/A')
+        rtt_avg = device.get('rtt_avg', 'N/A')
+        bandwidth = device.get('bandwidth_kbps', 'N/A')
+        tcp_port = device.get('tcp_port', 'N/A')
+        tcp = device.get('tcp_connect', 'N/A')
+        print(f"{ip:<15} {loss!s:<7} {rtt_avg!s:<10} {str(bandwidth):<15} {str(tcp_port):<8} {str(tcp):<8}")
+
+
+def perform_icmp_pings(ip, count=4, timeout=2):
+    sent = 0
+    rtts = []
+    for i in range(count):
+        try:
+            sent += 1
+            start = time.monotonic()
+            reply = sr1(IP(dst=ip)/ICMP(), timeout=timeout, verbose=False)
+            if reply is not None:
+                elapsed = (time.monotonic() - start) * 1000.0
+                rtts.append(elapsed)
+        except Exception as e:
+            # timeout, permission error, or other network error; log and continue (verbose only)
+            if VERBOSE:
+                print(f"ICMP error for {ip}: {e}", flush=True)
+            continue
+
+    received = len(rtts)
+    loss_pct = round(((sent - received) / sent) * 100, 1) if sent > 0 else 100.0
+    if rtts:
+        rtt_avg = round(statistics.mean(rtts), 1)
+    else:
+        rtt_avg = None
+
+    return {
+        'icmp_sent': sent,
+        'icmp_received': received,
+        'icmp_loss_pct': loss_pct,
+        'rtt_avg': rtt_avg
+    }
+
+
+def tcp_connect_time(ip, port, timeout=2):
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(timeout)
+            start = time.monotonic()
+            sock.connect((ip, port))
+            elapsed = (time.monotonic() - start) * 1000.0
+        return round(elapsed, 1)
+    except Exception:
+        return None
+
+def measure_bandwidth_for_device(ip, port, timeout=5, max_bytes=65536):
+    try:
+        req = f"GET / HTTP/1.0\r\nHost: {ip}\r\nConnection: close\r\n\r\n".encode()
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(timeout)
+            s.connect((ip, port))
+            send_start = time.monotonic()
+            s.sendall(req)
+
+            total = 0
+            s.settimeout(timeout)
+            while total < max_bytes:
+                try:
+                    chunk = s.recv(4096)
+                except Exception:
+                    break
+                if not chunk:
+                    break
+                total += len(chunk)
+            read_end = time.monotonic()
+
+        elapsed = read_end - send_start
+        if elapsed <= 0 or total == 0:
+            return None
+        kbps = (total * 8) / (elapsed * 1000.0)
+        return round(kbps, 1)
+    except Exception:
+        return None
+
+if __name__ == "__main__":
+    # VERBOSE is a module-level constant (default False).
+    devices = load_devices()
+    if not devices:
+        print("No devices found to measure performance.")
+    else:
+        devices = measure_performance(devices)
+        print_performance_summary(devices)
+        log_performance_data(devices)
+        print("Performance data logged to CSV/performance_log.csv")
