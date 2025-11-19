@@ -6,7 +6,7 @@
 - Stores found devices including their IP, MAC, and hostname (if available) into a file for later reference
 """
 
-import nmap, os, csv
+import nmap, os, csv, socket
 import argparse
 
 config = {}
@@ -19,6 +19,9 @@ def setup_config():
             line = line.strip()
             key, value = line.split('=', 1)
             config[key.strip()] = value.strip()
+    # normalize older key name `router` to the canonical `address`
+    if 'router' in config and 'address' not in config:
+        config['address'] = config['router']
 
 def scan_network(addr, dns_addr, subnet='24'):
     nm = nmap.PortScanner()
@@ -33,7 +36,13 @@ def scan_network(addr, dns_addr, subnet='24'):
     for host in nm.all_hosts():
         ip = host
         mac = nm[host]['addresses'].get('mac', 'N/A')
-        hostname = nm[host]['hostnames'][0]['name'] if nm[host]['hostnames'] else 'N/A'
+        # prefer nmap-discovered hostname, fall back to reverse DNS (PTR) lookup
+        hostname = nm[host]['hostnames'][0]['name'] if nm[host]['hostnames'] else None
+        if not hostname:
+            try:
+                hostname = socket.gethostbyaddr(ip)[0]
+            except Exception:
+                hostname = 'N/A'
         active = nm[host].state() == 'up'
 
         devices.append({'IP': ip, 'MAC': mac, 'Hostname': hostname, 'Active': active})
@@ -86,64 +95,56 @@ def save_devices(new_devices, filename='CSV/saved_devices.csv'):
             writer.writerow(device)"""
 
 def update_config():
-    for key, value in config.items():
-        if key == 'address':
-            print(f"Address ({value}): ")
-            config['address'] = input() or value
-        elif key == 'subnet':
-            print(f"Subnet ({value}): ")
-            config['subnet'] = input() or value
-        elif key == 'dns':
-            print(f"DNS Server ({value}): ")
-            config['dns'] = input() or value
+    # Make prompts/validation match init.py's behavior (router, subnet, dns)
+    entry_list = [
+        "router",
+        "subnet",
+        "dns"
+    ]
+
+    defaults = [
+        "192.168.0.1",
+        "24",
+        "192.168.0.1"
+    ]
+
+    configurations = [
+        "IPV4 router address (192.168.0.1): ",
+        "desired subnet (24): ",
+        "IPV4 router dns (192.168.0.1): "
+    ]
+
+    # Use existing values as defaults when present
+    existing = {
+        'router': config.get('router') or config.get('address'),
+        'subnet': config.get('subnet'),
+        'dns': config.get('dns')
+    }
+
+    # Write updated config using same validation as init.py
     with open('.config', 'w') as f:
-        for key, value in config.items():
-            f.write(f"{key}={value}\n")
+        for i, prompt in enumerate(configurations):
+            current = existing.get(entry_list[i]) or defaults[i]
+            user_input = input(f"Please enter the {prompt}")
+            if not user_input:
+                user_input = current
+            elif user_input and (i == 0 or i == 2):
+                # regex validation for IP address
+                import re
+                ip_pattern = re.compile(r'^(\d{1,3}\.){3}\d{1,3}$')
+                if not ip_pattern.match(user_input):
+                    print("\nInvalid IP address format. Using default.")
+                    user_input = defaults[i]
+            elif user_input and i == 1:
+                # validation for subnet
+                if not user_input.isdigit() or not (0 < int(user_input) <= 32):
+                    print("\nInvalid subnet format. Using default.")
+                    user_input = defaults[i]
 
-def main():
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(description='Nmap Network Scanner')
-    
-    parser.add_argument('-u', 
-                        '--update-config', 
-                        action='store_true',  # Use store_true for boolean flags
-                        help='Update .config file')
-    parser.add_argument('-v',
-                        '--verbose',
-                        action='store_true',  # Use store_true for boolean flags
-                        help='Enable verbose mode')
-    parser.add_argument('-s',
-                        '--scan',
-                        action='store_true',  # Use store_true for boolean flags
-                        help='Scan the network')
-    args = parser.parse_args()
+            key = entry_list[i]
+            config[key] = user_input
+            f.write(f"{key}={user_input}\n")
 
-    if args.update_config:
-        update_config()
-        print(".config file updated.")
-
-    if args.scan:
-        setup_config()
-        addr = config.get('address', '<address>')
-        dns_addr = config.get('dns', '<dns_server>')
-
-        devices = scan_network(addr, dns_addr, config.get('subnet', '24'))
-
-        save_devices(devices)
-
-    if args.verbose:
-        print("Verbose mode is enabled.")
-
-
-    """
-    setup_config()
-    addr = config.get('address', '<address>')
-    dns_addr = config.get('dns', '<dns_server>')
-
-    devices = scan_network(addr, dns_addr, config.get('subnet', '24')) 
-
-    save_to_csv(devices)
-    """
-
-if __name__ == "__main__":
-    main()
+    # keep canonical 'address' key for compatibility
+    if 'router' in config:
+        config['address'] = config['router']

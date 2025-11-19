@@ -1,7 +1,7 @@
 from scapy.all import *
 
-addr = "" 
-dns_addr = "" 
+addr = "192.168.0.1/24" 
+dns_addr = "192.168.0.1" 
 
 with open(".config") as f:
     for raw in f:
