@@ -82,7 +82,20 @@ def config_initialization():
         print("Configuration saved to .config file.")
     return
 
+#setting cronjob in user crontab for scanning and performance functions
+def cronjob_setup():
+    #make sure out script is executable, script should be in same dir 
+    output = subprocess.run(["chmod","+x","./cronjob_setup.sh"], capture_output=True, text=True)
+    print(output.stdout)
+    print(output.stderr)
+    #running bash script
+    result = subprocess.run(["./cronjob_setup.sh"],capture_output=True, text=True)
+    print(result.stdout)
+    print(result.stderr)
+    return
+
 if __name__ == "__main__":
     package_installation()
     config_initialization()
     WebUI.host.begin_web_ui()
+    #cronjob_setup()
