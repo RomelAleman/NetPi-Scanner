@@ -7,7 +7,7 @@
 """
 
 import nmap, os, csv, socket
-import argparse
+from scapy.all import IP, UDP, DNS, DNSQR, DNSRR, sr1
 
 config = {}
 
@@ -37,7 +37,7 @@ def scan_network(addr, dns_addr, subnet='24'):
         ip = host
         mac = nm[host]['addresses'].get('mac', 'N/A')
         # prefer nmap-discovered hostname, fall back to reverse DNS (PTR) lookup
-        hostname = nm[host]['hostnames'][0]['name'] if nm[host]['hostnames'] else None
+        hostname = get_hostname(ip, dns_addr)
         if not hostname:
             try:
                 hostname = socket.gethostbyaddr(ip)[0]
@@ -48,6 +48,41 @@ def scan_network(addr, dns_addr, subnet='24'):
         devices.append({'IP': ip, 'MAC': mac, 'Hostname': hostname, 'Active': active})
 
     return devices
+
+def get_hostname(ip, dns_addr=None):
+ 
+    if not dns_addr:
+        dns_addr = '1.1.1.1'
+
+    parts = ip.split('.')
+    if len(parts) != 4:
+        return None
+
+    rev = ".".join(parts[::-1]) + ".in-addr.arpa"
+
+    try:
+        query = IP(dst=dns_addr) / UDP(dport=53) / DNS(rd=1, qd=DNSQR(qname=rev, qtype='PTR'))
+        resp = sr1(query, timeout=1, verbose=False)
+        if not resp or not resp.haslayer(DNS) or resp[DNS].ancount == 0:
+            return None
+
+        ans = resp[DNS].an
+        # scapy returns first answer in ans; extract rdata
+        rdata = getattr(ans, 'rdata', None)
+        if rdata is None:
+            return None
+        if isinstance(rdata, bytes):
+            try:
+                rdata = rdata.decode()
+            except Exception:
+                rdata = None
+        if isinstance(rdata, str):
+            return rdata.rstrip('.')
+
+    except Exception:
+        return None
+
+    return None
 
 def load_devices(filename='CSV/saved_devices.csv'):
     devices = []
@@ -85,14 +120,6 @@ def save_devices(new_devices, filename='CSV/saved_devices.csv'):
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(device_dict.values())
-
-"""def save_to_csv(devices, filename='devices.csv'):
-    with open(filename, 'w', newline='') as csvfile:
-        fieldnames = ['IP', 'MAC', 'Hostname', 'Active']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
-        for device in devices:
-            writer.writerow(device)"""
 
 def update_config():
     # Make prompts/validation match init.py's behavior (router, subnet, dns)
