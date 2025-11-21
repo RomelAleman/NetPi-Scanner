@@ -1,13 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Performance – NetPi Scanner</title>
+	<meta charset="UTF-8">
+	<title>Performance – NetPi Scanner</title>
+	<style>
+		body {
+		  font-family: Arial, sans-serif;
+		  background: #f2f2f2;
+		  margin: 0;
+		  padding: 0;
+		  color: #000000;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			min-height: 100vh;
+
+			background-image: url('/static/sdsu-bg.png');
+			background-size: cover;
+			background-position: center;
+			background-repeat: no-repeat;
+		}
+		.container {
+			max-width: 800px;
+			background: #ffffff;
+			border: 1px solid #dddddd;
+			border-radius: 6px;
+			padding: 20px 24px;
+		}
+		h1 { color: #D41736; margin-top: 0; }
+		.subtitle { font-size: 14px; margin-bottom: 20px; }
+		.actions { display: flex; flex-wrap: wrap; gap: 16px; }
+		.action { flex: 1 1 220px; border: 1px solid #dddddd; border-radius: 4px; padding: 12px 14px; }
+		.action h2 { font-size: 16px; margin: 0 0 6px; }
+		.action p { font-size: 13px; margin: 0 0 10px; }
+		.link { display: inline-block; font-size: 13px; padding: 6px 10px; border-radius: 4px; border: 1px solid #D41736; background-color: #D41736; color: white; text-decoration: none; }
+		.link.secondary { background-color: #ffffff; color: #D41736; }
+	</style>
 </head>
 <body>
-    <h1>Performance Tests</h1>
-    <p>This page will show performance metrics for devices.</p>
+	<div class="page container">
+		<h1>Performance</h1>
+		<p class="subtitle">Run performance benchmarks or view collected metrics.</p>
 
-    <p><a href="{{ url_for('index') }}">⬅ Back to Home</a></p>
+		<div class="actions">
+			<div class="action">
+				<h2>Start Benchmarks</h2>
+				<p>Run performance tests (latency, TCP connect, bandwidth) on discovered devices.</p>
+				<a href="{{ url_for('performance') }}" class="link">Start Benchmarks</a>
+			</div>
+
+			<div class="action">
+				<h2>Performance Metrics</h2>
+				<p>Open saved performance logs held in CSV for review.</p>
+				<a href="{{ url_for('reports') }}" class="link secondary">View Performance Metrics</a>
+			</div>
+		</div>
+
+		<p style="margin-top:12px;"><a href="{{ url_for('index') }}" class="link secondary">Back Home</a></p>
+
+		<p class="footer">NetPi Scanner – quick actions.</p>
+	</div>
 </body>
 </html>
