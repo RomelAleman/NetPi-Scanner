@@ -1,26 +1,6 @@
-#!/usr/bin/env python3
-
-"""
-- Installation script for NetPi-Scanner
-- Installs dependencies and sets up initial configuration
-"""
-
 import subprocess, re
 import WebUI.host
 import socket
-
-# subprocess call to install required packages
-def package_installation():
-    
-    # We can add more packages here as needed
-    packages_to_install = ['python3-nmap', 
-                           'python3-scapy', 
-                           'python3-flask']
-    
-    for pkg in packages_to_install:
-        print(f"\nInstalling {pkg}...")
-        subprocess.check_call(['sudo', 'apt', 'install', '-y', pkg])
-        print()
 
 # Initial configuration for user to add there adresses and subnet
 # Defaults to most common home network configurations if not provided
@@ -93,9 +73,3 @@ def cronjob_setup():
     print(result.stdout)
     print(result.stderr)
     return
-
-if __name__ == "__main__":
-    package_installation()
-    config_initialization()
-    WebUI.host.begin_web_ui()
-    #cronjob_setup()
