@@ -3,6 +3,7 @@
 """
 - Pulls scripts from init_config.py and host.py after installing required packages
 - Runs package installation function
+- Can add cron jobs functions, but just wasn't sure where to place them
 """
 
 import subprocess
