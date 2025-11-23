@@ -26,6 +26,18 @@
             border: 1px solid #dddddd;
             border-radius: 6px;
             padding: 20px 24px;
+            display: flex;
+            flex-direction: column;
+            min-height: 60vh;
+            margin: 0;
+        }
+        .footer {
+            margin-top: 24px;
+            font-size: 12px;
+            color: #888888;
+            margin-top: auto;
+            text-align: center;
+            padding: 10px 0;
         }
         h1 { color: #D41736; margin-top: 0; }
         .subtitle { font-size: 14px; margin-bottom: 20px; }
@@ -46,19 +58,93 @@
             <div class="action">
                 <h2>Scan Network</h2>
                 <p>Run a discovery scan on the configured subnet.</p>
-                <a href="{{ url_for('scan') }}" class="link">Start Scan</a>
+                <button id="start-scan" class="link" style="border:none; cursor:pointer;">Start Scan</button>
             </div>
 
-            <div class="action">
-                <h2>Scanned Devices</h2>
-                <p>Open saved scan results held in CSV for review.</p>
-                <a href="{{ url_for('reports') }}" class="link secondary">View Scanned Devices</a>
-            </div>
         </div>
 
-        <p style="margin-top:12px;"><a href="{{ url_for('index') }}" class="link secondary">Back Home</a></p>
+        <!-- Saved devices window -->
+        <div style="margin-top:18px;">
+            <h2>Saved Devices</h2>
+            {% if devices and devices|length > 0 %}
+                <div style="border:1px solid #ddd; border-radius:4px; padding:8px; background:#fafafa;">
+                    <table style="width:100%; border-collapse: collapse;">
+                        <thead>
+                            <tr>
+                                <th style="text-align:left; padding:6px; border-bottom:1px solid #eee;">IP</th>
+                                <th style="text-align:left; padding:6px; border-bottom:1px solid #eee;">MAC</th>
+                                <th style="text-align:left; padding:6px; border-bottom:1px solid #eee;">Hostname</th>
+                                <th style="text-align:left; padding:6px; border-bottom:1px solid #eee;">Active</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for d in devices %}
+                            <tr>
+                                <td style="padding:6px; border-bottom:1px solid #f6f6f6;">{{ d['IP'] }}</td>
+                                <td style="padding:6px; border-bottom:1px solid #f6f6f6;">{{ d['MAC'] }}</td>
+                                <td style="padding:6px; border-bottom:1px solid #f6f6f6;">{{ d['Hostname'] }}</td>
+                                <td style="padding:6px; border-bottom:1px solid #f6f6f6;">{{ d['Active'] }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p><em>No saved devices.</em></p>
+            {% endif %}
+        </div>
 
+        <div id="scan-modal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center;">
+            <div style="background:#fff; padding:20px; border-radius:6px; max-width:420px; margin:0 auto; text-align:center;">
+                <p id="scan-modal-message">Scanning... This may take a while</p>
+                <div id="scan-modal-actions" style="margin-top:12px; display:none;">
+                    <button id="scan-ok" class="link secondary" style="border:none; background:#fff; color:#D41736; cursor:pointer;">OK</button>
+                </div>
+            </div>
+        </div>
+        
+        <p style="margin-top:12px;"><a href="{{ url_for('index') }}">⬅ Back to Home</a></p>
         <p class="footer">NetPi Scanner – quick actions.</p>
     </div>
+
+    <script>
+        const startBtn = document.getElementById('start-scan');
+        const modal = document.getElementById('scan-modal');
+        const modalMessage = document.getElementById('scan-modal-message');
+        const modalActions = document.getElementById('scan-modal-actions');
+        const scanOk = document.getElementById('scan-ok');
+
+        function showModal(msg, showOk=false){
+            modalMessage.textContent = msg;
+            modal.style.display = 'flex';
+            modalActions.style.display = showOk ? 'block' : 'none';
+        }
+
+        function hideModal(){
+            modal.style.display = 'none';
+        }
+
+        startBtn.addEventListener('click', () => {
+            showModal('Scanning...', false);
+
+            fetch('{{ url_for("scan") }}', { method: 'POST' })
+                .then(resp => resp.json())
+                .then(data => {
+                    if(data && data.status === 'ok'){
+                        showModal('Scan complete', true);
+                    } else {
+                        showModal('Scan failed: ' + (data.message || 'unknown'), true);
+                    }
+                })
+                .catch(err => {
+                    showModal('Scan failed: ' + err.toString(), true);
+                });
+        });
+
+        scanOk.addEventListener('click', () => {
+            hideModal();
+            window.location.reload();
+        });
+    </script>
 </body>
 </html>
