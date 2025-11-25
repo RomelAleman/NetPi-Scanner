@@ -89,7 +89,8 @@ def cronjob_setup():
     print(output.stdout)
     print(output.stderr)
     #running bash script
-    result = subprocess.run(["./cronjob_setup.sh"],capture_output=True, text=True)
+    user_input = input("Please enter the cronjob interval for NetPi(Default 30 min):")
+    result = subprocess.run(["./cronjob_setup.sh", user_input],capture_output=True, text=True)
     print(result.stdout)
     print(result.stderr)
     return
