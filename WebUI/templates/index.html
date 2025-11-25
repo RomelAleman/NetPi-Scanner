@@ -1,117 +1,139 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>NetPi Scanner</title>
-    <style>
-        /* Main layout and background */
-        body {
-          font-family: Arial, sans-serif;
-          background: #f2f2f2;
-          margin: 0;
-          padding: 0;
-          color: #000000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-
-            background-image: url('/static/sdsu-bg.png');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-        }
-        /* This is the main content box */
-        .container {
-            max-width: 800px;
-            background: #ffffff;
-            border: 1px solid #dddddd;
-            border-radius: 6px;
-            padding: 20px 24px;
-        /* This creates the title in SDSU Red */
-        }
-        h1 {
-            margin-top: 0;
-            color: #D41736;
-        }
-        .subtitle {
-            font-size: 14px;
-            margin-bottom: 20px;
-        }
-        /* This is the flexbox grid for action cards */
-        .actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 16px;
-        }
-        .action {
-            flex: 1 1 220px;
-            border: 1px solid #dddddd;
-            border-radius: 4px;
-            padding: 12px 14px;
-        }
-        .action h2 {
-            font-size: 16px;
-            margin: 0 0 6px;
-        }
-        .action p {
-            font-size: 13px;
-            margin: 0 0 10px;
-        }
-        /* Primary button style */
-        .link {
-            display: inline-block;
-            font-size: 13px;
-            padding: 6px 10px;
-            border-radius: 4px;
-            border: 1px solid #D41736;
-            background-color: #D41736;
-            color: white;
-            text-decoration: none;
-        }
-        /* Outline button variant */
-        .link.secondary {
-            background-color: #ffffff;
-            color: #D41736;
-        }
-        .note {
-            margin-top: 18px;
-            font-size: 11px;
-            color: #000000;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>NetPi Scanner</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:#121735;
+      --panel-2:#0f1430;
+      --text:#e6e9f5;
+      --muted:#a9b0c7;
+      --accent:#6ee7ff;
+      --accent-2:#a78bfa;
+      --good:#34d399;
+      --warn:#fbbf24;
+      --bad:#fb7185;
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:radial-gradient(1200px 600px at 10% -20%, #1b2250, transparent),
+                 radial-gradient(1000px 500px at 110% 10%, #1a1447, transparent),
+                 var(--bg);
+      color:var(--text);
+      min-height:100vh;
+      display:flex; align-items:center; justify-content:center;
+      padding:24px;
+    }
+    .wrap{
+      width:min(1000px,100%);
+      background:linear-gradient(180deg,var(--panel),var(--panel-2));
+      border:1px solid rgba(255,255,255,0.06);
+      border-radius:var(--radius);
+      box-shadow:0 20px 80px rgba(0,0,0,0.5);
+      padding:28px;
+    }
+    header{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:16px; margin-bottom:22px;
+    }
+    .brand{
+      display:flex; align-items:center; gap:12px;
+      font-weight:800; letter-spacing:0.3px;
+      font-size:22px;
+    }
+    .dot{
+      width:14px;height:14px;border-radius:50%;
+      background:conic-gradient(from 180deg, var(--accent), var(--accent-2));
+      box-shadow:0 0 18px rgba(110,231,255,0.8);
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:16px;
+    }
+    @media (max-width: 800px){
+      .grid{grid-template-columns:1fr;}
+    }
+    .card{
+      background:rgba(255,255,255,0.03);
+      border:1px solid rgba(255,255,255,0.06);
+      border-radius:14px;
+      padding:18px;
+      display:flex; flex-direction:column; gap:10px;
+      transition:transform .12s ease, border-color .12s ease, background .12s ease;
+    }
+    .card:hover{
+      transform:translateY(-3px);
+      border-color:rgba(110,231,255,0.5);
+      background:rgba(255,255,255,0.05);
+    }
+    .title{font-size:18px;font-weight:700;}
+    .desc{color:var(--muted);line-height:1.4;font-size:14px;}
+    .btn{
+      margin-top:auto;
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:10px 14px; border-radius:12px;
+      border:1px solid rgba(255,255,255,0.08);
+      text-decoration:none; color:var(--text);
+      font-weight:600; letter-spacing:0.2px;
+      background:linear-gradient(180deg, rgba(110,231,255,0.18), rgba(167,139,250,0.18));
+    }
+    .btn.secondary{
+      background:rgba(255,255,255,0.04);
+    }
+    footer{
+      margin-top:18px; color:var(--muted); font-size:12px; text-align:center;
+    }
+  </style>
 </head>
 <body>
-    <!-- This is the Main Container -->
-    <div class="page">
-        <h1>Welcome to NetPi Scanner</h1>
-        <p class="subtitle">
-            Web interface for running network scans, performance tests, and viewing saved results.
-        </p>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="dot"></div>
+        NetPi Scanner
+      </div>
+      <div style="color:var(--muted);font-size:14px;">
+        CS576 Web UI
+      </div>
+    </header>
 
-        <!-- Action cards for main finctionality -->
-        <div class="actions">
-            <div class="action">
-                <h2>Scan Network</h2>
-                <p>Discover devices on the configured subnet and save results for later analysis.</p>
-                <a href="{{ url_for('scan') }}" class="btn">Start Scan</a>
-            </div>
-            <div class="action">
-                <h2>Performance</h2>
-                <p>Run basic performance checks (for example, latency) on discovered devices.</p>
-                <a href="{{ url_for('performance') }}" class="btn secondary">Measure Performance</a>
-            </div>
-
-            <div class="action">
-                <h2>View Reports</h2>
-                <p>Open CSV files generated by scans and performance tests.</p>
-                <a href="{{ url_for('reports') }}" class="btn secondary">View CSV Results</a>
-            </div>
+    <div class="grid">
+      <div class="card">
+        <div class="title">Scan Network</div>
+        <div class="desc">
+          Discover active devices on a subnet using Nmap ping scanning,
+          and store them to CSV for later analysis.
         </div>
+        <a class="btn" href="{{ url_for('scan') }}">Open Scanner →</a>
+      </div>
 
-        <p class="footer">
-            NetPi Scanner – CS576 assignment web interface.
-        </p>
+      <div class="card">
+        <div class="title">Performance Test</div>
+        <div class="desc">
+          Run ICMP, TCP connect timing, and bandwidth estimation on saved devices.
+          Results are logged to CSV.
+        </div>
+        <a class="btn" href="{{ url_for('performance') }}">Run Performance →</a>
+      </div>
+
+      <div class="card">
+        <div class="title">Reports</div>
+        <div class="desc">
+          Browse and download CSV outputs from scans and performance tests.
+        </div>
+        <a class="btn secondary" href="{{ url_for('reports') }}">View Reports →</a>
+      </div>
     </div>
+
+    <footer>
+      NetPi Scanner — lightweight network discovery and diagnostics
+    </footer>
+  </div>
 </body>
-</html
+</html>
