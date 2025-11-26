@@ -23,7 +23,21 @@ def package_installation():
         subprocess.check_call(['sudo', 'apt', 'install', '-y', pkg])
         print()
 
+#setting cronjob in user crontab for scanning and performance functions
+def cronjob_setup():
+    #make sure out script is executable, script should be in same dir 
+    output = subprocess.run(["chmod","+x","./cronjob_setup.sh"], capture_output=True, text=True)
+    print(output.stdout)
+    print(output.stderr)
+    #running bash script
+    user_input = input("Please enter the cronjob interval for NetPi(Default 30 min):")
+    result = subprocess.run(["./cronjob_setup.sh", user_input],capture_output=True, text=True)
+    print(result.stdout)
+    print(result.stderr)
+    return
+
 if __name__ == "__main__":
     package_installation()
     config_initialization()
+    cronjob_setup()
     begin_web_ui()

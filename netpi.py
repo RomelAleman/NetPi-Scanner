@@ -78,6 +78,7 @@ def main():
     if args.perf_log:
         timestamp = datetime.datetime.now() #for logged files
         path=f"scheduled_logs/performance/{timestamp}.log"
+        log_append = "{timestamp}-" 
         devices = performance_module.load_devices()
         if devices:
             performance_module.measure_performance(devices)
@@ -86,7 +87,7 @@ def main():
             print("No devices found to measure performance.")
         
 
-    if args.scan_logs:
+    if args.scan_log:
         timestamp = datetime.datetime.now() #for logged files
         path=f"scheduled_logs/scan/{timestamp}.log"
         scan_module.setup_config()
