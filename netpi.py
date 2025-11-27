@@ -7,7 +7,6 @@
 """
 
 import argparse
-import datetime
 import Functions.scan as scan_module
 import Functions.peformance as performance_module
 import WebUI.host as webui_module
@@ -35,11 +34,11 @@ def parse_arguments():
     parser.add_argument('-c',
                         '--scan-log',
                         action='store_true',
-                        help='logging for scans')
+                        help='logging for scans, quietly updates /csv/saved_devices.csv')
     parser.add_argument('-e',
                         '--perf-log',
                         action='store_true',
-                        help='logging for performance metrics'
+                        help='logging for performance metrics, quietly updates /csv/performance_log.csv'
     )
 
     args = parser.parse_args()
@@ -76,25 +75,22 @@ def main():
         print("Web UI launched.")
 
     if args.perf_log:
-        timestamp = datetime.datetime.now() #for logged files
-        path=f"scheduled_logs/performance/{timestamp}.log"
-        log_append = "{timestamp}-" 
+        #make sure log file exists
+        path="scheduled_logs/performance.log"
         devices = performance_module.load_devices()
         if devices:
             performance_module.measure_performance(devices)
-            performance_module.log_performance_data(devices,path)
-        else:
-            print("No devices found to measure performance.")
-        
+            performance_module.log_performance_data(devices)#updates csv/performance_log.csv
+        #Adding logging info regardless if devices exists or not
+        performance_module.add_log(devices,path) 
 
     if args.scan_log:
-        timestamp = datetime.datetime.now() #for logged files
-        path=f"scheduled_logs/scan/{timestamp}.log"
         scan_module.setup_config()
         addr = scan_module.config.get('address', '<address>')
         dns_addr = scan_module.config.get('dns', '<dns_server>')
         devices = scan_module.scan_network(addr, dns_addr, scan_module.config.get('subnet', '24')) 
-        scan_module.save_devices(devices,path)
+        scan_module.device_log(devices) #saves to log and runs 
+
 
 if __name__ == "__main__":
     main()

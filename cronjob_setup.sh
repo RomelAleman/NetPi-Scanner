@@ -48,3 +48,22 @@ else
     echo "No crontab exists, creating new crontab for $USER"
     echo "$perf_frequency" | crontab -
 fi 
+
+#in case it logging dir changes later
+LOG_DIR="./scheduled_logs"
+
+#Verify the directory exists
+if [ ! -d "$LOG_DIR" ]; then
+    echo "$LOG_DIR does not exist, creating now"
+    mkdir -p "$LOG_DIR"
+fi
+#Create logging files for cronjob
+touch "$LOG_DIR/performance.log"
+echo "${LOG_DIR}/performance.log created"
+
+touch "$LOG_DIR/scan.log"
+echo "${LOG_DIR}/scan.log created"
+
+#making read/write-able to all users
+chmod 666 "$LOG_DIR/performance.log"
+chmod 666 "$LOG_DIR/scan.log"

@@ -5,7 +5,7 @@
 - Measures and logs response times, bandwidth, and latency for scanned devices
 """
 from scapy.all import sr1, IP, ICMP
-import os
+import os, datetime
 import time
 import csv
 import socket
@@ -56,6 +56,48 @@ def log_performance_data(devices, filename='CSV/performance_log.csv'):
                 'bandwidth_kbps': device.get('bandwidth_kbps', ''),
                 
             })
+
+def add_log(devices,filename='scheduled_log/performance.log'):
+    #make sure logging dir exists
+    dirname = os.path.dirname(filename)
+    if dirname and not os.path.exists(dirname):
+        os.makedirs(dirname, exist_ok=True)
+    
+    abs_path = os.path.abspath(filename)
+    
+    #before appending make sure to rotate logs when necessary
+    
+    #scheduled logging, appended to end of file
+    with open(filename, 'a', newline='') as f:
+        timestamp = datetime.datetime.now().strftime("%m/%d/%Y %I:%M:%S %p") #for logged files
+        if devices:
+            fieldnames = [
+                'timestamp',
+                'IP',
+                'icmp_sent', 'icmp_received', 'icmp_loss_pct', 'rtt_avg',
+                'tcp_port', 'tcp_connect',
+                'bandwidth_kbps'
+            ]
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            #if file is empty write header otherwise we can skip
+            if os.path.getsize(abs_path) == 0:
+                writer.writeheader()
+            for device in devices:
+                ip = device['IP']
+                writer.writerow({
+                    'timestamp' : timestamp,
+                    'IP': ip,
+                    'icmp_sent': device.get('icmp_sent', ''),
+                    'icmp_received': device.get('icmp_received', ''),
+                    'icmp_loss_pct': device.get('icmp_loss_pct', ''),
+                    'rtt_avg': device.get('rtt_avg', ''),
+                    'tcp_port': device.get('tcp_port', ''),
+                 'tcp_connect': device.get('tcp_connect', ''),
+                    'bandwidth_kbps': device.get('bandwidth_kbps', ''),
+
+                })
+        else:
+            f.write(f"{timestamp}No devices found to measure performance.")
 
 def measure_performance(devices):
     # Measure performance metrics for each device
