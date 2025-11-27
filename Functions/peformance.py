@@ -4,8 +4,8 @@
 - Performance measurement utilities for NetPi-Scanner
 - Measures and logs response times, bandwidth, and latency for scanned devices
 """
-from scapy.all import sr1, IP, ICMP
-import os, datetime
+from scapy.all import sr1, IP, ICMP, TCP
+import os
 import time
 import csv
 import socket
@@ -38,7 +38,7 @@ def log_performance_data(devices, filename='CSV/performance_log.csv'):
             'IP',
             'icmp_sent', 'icmp_received', 'icmp_loss_pct', 'rtt_avg',
             'tcp_port', 'tcp_connect',
-            'bandwidth_kbps'
+            'bandwidth_kbps', 'open_ports'
         ]
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -54,50 +54,9 @@ def log_performance_data(devices, filename='CSV/performance_log.csv'):
                 'tcp_port': device.get('tcp_port', ''),
                 'tcp_connect': device.get('tcp_connect', ''),
                 'bandwidth_kbps': device.get('bandwidth_kbps', ''),
+                'open_ports': device.get('open_ports', '')
                 
             })
-
-def add_log(devices,filename='scheduled_log/performance.log'):
-    #make sure logging dir exists
-    dirname = os.path.dirname(filename)
-    if dirname and not os.path.exists(dirname):
-        os.makedirs(dirname, exist_ok=True)
-    
-    abs_path = os.path.abspath(filename)
-    
-    #before appending make sure to rotate logs when necessary
-    
-    #scheduled logging, appended to end of file
-    with open(filename, 'a', newline='') as f:
-        timestamp = datetime.datetime.now().strftime("%m/%d/%Y %I:%M:%S %p") #for logged files
-        if devices:
-            fieldnames = [
-                'timestamp',
-                'IP',
-                'icmp_sent', 'icmp_received', 'icmp_loss_pct', 'rtt_avg',
-                'tcp_port', 'tcp_connect',
-                'bandwidth_kbps'
-            ]
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            #if file is empty write header otherwise we can skip
-            if os.path.getsize(abs_path) == 0:
-                writer.writeheader()
-            for device in devices:
-                ip = device['IP']
-                writer.writerow({
-                    'timestamp' : timestamp,
-                    'IP': ip,
-                    'icmp_sent': device.get('icmp_sent', ''),
-                    'icmp_received': device.get('icmp_received', ''),
-                    'icmp_loss_pct': device.get('icmp_loss_pct', ''),
-                    'rtt_avg': device.get('rtt_avg', ''),
-                    'tcp_port': device.get('tcp_port', ''),
-                 'tcp_connect': device.get('tcp_connect', ''),
-                    'bandwidth_kbps': device.get('bandwidth_kbps', ''),
-
-                })
-        else:
-            f.write(f"{timestamp}No devices found to measure performance.")
 
 def measure_performance(devices):
     # Measure performance metrics for each device
@@ -121,6 +80,12 @@ def measure_device(device, i, total):
     sent = icmp_results.get('icmp_sent', 0)
     loss = icmp_results.get('icmp_loss_pct')
     avg = icmp_results.get('rtt_avg')
+
+    open_ports = scan_ports(ip)
+    device['open_ports'] = ','.join(map(str, open_ports)) if open_ports else 'None'
+    if VERBOSE:
+        print(f"  Open ports: {device['open_ports']}")
+
     if VERBOSE:
         if sent == 0:
             print(f"  ICMP: no-icmp")
@@ -233,6 +198,26 @@ def measure_bandwidth_for_device(ip, port, timeout=5, max_bytes=65536):
     except Exception:
         return None
 
+
+def scan_ports(ip) -> list[int]:
+    port_list = [22, 80, 433, 20, 21, 8080]    
+    open_ports = []
+    
+    for port in port_list:
+        # Create SYN packet
+        pkt = IP(dst=ip) / TCP(dport=port, flags="S")
+        
+        # Send and wait for response
+        resp = sr1(pkt, timeout=1, verbose=False)
+        
+        # Check for SYN-ACK (open port)
+        if resp and resp.haslayer(TCP):
+            if resp[TCP].flags == 0x12:  # SYN-ACK (SA flags)
+                open_ports.append(port)
+                rst = IP(dst=ip) / TCP(dport=port, flags="R")
+                sr1(rst, timeout=1, verbose=False)
+    
+    return sorted(open_ports)
 if __name__ == "__main__":
     # VERBOSE is a module-level constant (default False).
     devices = load_devices()
