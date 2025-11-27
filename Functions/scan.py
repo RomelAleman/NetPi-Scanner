@@ -5,22 +5,11 @@
 - Scans specified network ranges for connected devices (defaults to .config specified ip and subnet if not provided)
 - Stores found devices including their IP, MAC, and hostname (if available) into a file for later reference
 """
-import logging
+
 import nmap, os, csv, socket
 from scapy.all import IP, UDP, DNS, DNSQR, DNSRR, sr1
 
 config = {}
-log_file_path = 'scheduled_logs/scan.log' # log location
-os.makedirs(os.path.dirname(log_file_path), exist_ok=True) #double check that it's there
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-    handlers=[
-        logging.FileHandler(log_file_path),
-        logging.StreamHandler()  # optional: also log to console
-    ]
-    )
 
 def setup_config():
     # loop through each line in .config
@@ -187,32 +176,4 @@ def update_config():
     if 'router' in config:
         config['address'] = config['router']
 
-def device_log(new_devices,filename='CSV/saved_devices.csv'):
-    logger = logging.getLogger(__name__)
-    existing_devices = load_devices(filename)
-    # Create a dictionary for easy lookup
-    device_dict = {device['MAC']: device for device in existing_devices}
 
-    # Update existing devices and add new ones
-    for device in new_devices:
-        mac = device['MAC']
-        if mac in device_dict:
-            # Update existing device
-            device_dict[mac].update(device)  # Update existing attributes
-            logger.info(f"Update existing device {mac}")
-        else:
-            # Add new device
-            device_dict[mac] = device    
-            logger.info(f"Add new device {mac}")
-
-    #same as save_devices()
-    # Ensure CSV directory exists, then write updated device list back to file
-    dirname = os.path.dirname(filename)
-    if dirname and not os.path.exists(dirname):
-        os.makedirs(dirname, exist_ok=True)
-
-    with open(filename, 'w', newline='') as f:
-        fieldnames = ['IP', 'MAC', 'Hostname', 'Active']
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(device_dict.values())
