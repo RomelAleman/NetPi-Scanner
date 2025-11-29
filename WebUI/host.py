@@ -1,9 +1,14 @@
 from flask import Flask, render_template, request, jsonify
 import socket
 import csv, os
+import sys
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, parent_dir)
+
 import Functions.scan as scan_module
 import Functions.peformance as perf_module
 import Functions.clear_cache as cache_module
+import Functions.sniffer as sniff_module
 
 app = Flask(__name__)
 
@@ -79,6 +84,67 @@ def performance():
 @app.route("/reports")
 def reports():
     return render_template("reports.html")
+@app.route("/sniffer", methods=["GET", "POST"], endpoint='sniffer')
+def webSniff(): 
+    if request.method == 'GET':
+        return render_template("sniffer.html")
+    try:
+        duration = int(request.form.get('duration', 10))
+        protocol_filter = request.form.get('filter', '')
+        interface = request.form.get('interface', '')
+
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        pcap_filename = f"capture_{timestamp}.pcap"
+        
+        sniff_module.sniffer(pcap_filename,time=duration)
+        sniff_module.analyze_pcap(pcap_filename)
+        import csv
+        stats = {
+            'total': 0,
+            'tcp': 0,
+            'udp': 0,
+            'icmp': 0,
+            'arp': 0
+        }
+        
+        with open('protocols.csv', 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                proto = row['Protocol'].upper()
+                count = int(row['Count'])
+                stats['total'] += count
+                if proto in stats:
+                    stats[proto.lower()] = count
+        
+        # If a protocol filter was selected, filter the packets
+        if protocol_filter:
+            sniff_module.filter_packets("output.pcap", protocol_filter)
+        
+        return render_template("sniffer.html", 
+                             stats=stats, 
+                             message=f"Successfully captured {stats['total']} packets for {duration} seconds",
+                             status_type='success')
+        
+        
+        # If a protocol filter was selected, filter the packets
+        if protocol_filter:
+            sniff_module.filter_packets("output.pcap", protocol_filter)
+        
+        # Run full analysis to generate CSV files
+        sniff_module.analyze_pcap("output.pcap")
+        
+        return render_template("sniffer.html", 
+                             stats=stats, 
+                             message=f"Successfully captured {len(packets)} packets for {duration} seconds",
+                             status_type='success')
+    
+    except Exception as e:
+        return render_template("sniffer.html", 
+                             message=f"Error during capture: {str(e)}",
+                             status_type='error')
+
+
 
 
 def get_host_ip():

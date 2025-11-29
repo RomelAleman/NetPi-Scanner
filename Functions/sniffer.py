@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from scapy.all import rdpcap, IP, TCP, UDP, ICMP, ARP, DNS, DNSQR
+from scapy.all import rdpcap, IP, TCP, UDP, ICMP, ARP, DNS, DNSQR, sniff, wrpcap
 import csv
 import sys
 from collections import Counter
@@ -109,6 +109,11 @@ def save_dns_csv(dns_queries, filename):
         writer.writerow(['Domain', 'Query Count'])
         for query, count in query_count.most_common():
             writer.writerow([query, count])
+def sniffer(pcapname, time=10):
+    print(time)
+    capture = sniff(timeout = time)
+    wrpcap(pcapname, capture)
+
 
 def filter_packets(pcap_file, protocol):
     from scapy.all import wrpcap
@@ -146,11 +151,11 @@ def filter_packets(pcap_file, protocol):
 
 if __name__ == "__main__":
     
-    pcap_file = sys.argv[1]
     
-    if len(sys.argv) == 2:
-        analyze_pcap(pcap_file)
-    else:
-        # Filter
-        protocol = sys.argv[2]
-        filter_packets(pcap_file, protocol)
+    if len(sys.argv) == 1:
+        print("starting new capture")
+        sniffer()
+    else: 
+        print("loading pcap from memory")
+        analyze_pcap("output.pcap")
+        filter_packets("output.pcap", "http")

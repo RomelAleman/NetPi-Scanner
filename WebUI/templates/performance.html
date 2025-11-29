@@ -84,6 +84,8 @@
 								<th style="text-align:left; padding:6px; border-bottom:1px solid #eee;">TCP Port</th>
 								<th style="text-align:left; padding:6px; border-bottom:1px solid #eee;">TCP Connect (ms)</th>
 								<th style="text-align:left; padding:6px; border-bottom:1px solid #eee;">Bandwidth (kbps)</th>
+							<th style="text-align:left; padding:6px; border-bottom:1px solid #eee;"> Open ports </th>
+
 							</tr>
 						</thead>
 						<tbody>
@@ -97,6 +99,7 @@
 								<td style="padding:6px; border-bottom:1px solid #f6f6f6;">{{ r.get('tcp_port','') }}</td>
 								<td style="padding:6px; border-bottom:1px solid #f6f6f6;">{{ r.get('tcp_connect','') }}</td>
 								<td style="padding:6px; border-bottom:1px solid #f6f6f6;">{{ r.get('bandwidth_kbps','') }}</td>
+								<td style="padding:6px; border-bottom:1px solid #f6f6f6;">{{ r.get('open_ports', '')}}</td>
 							</tr>
 						{% endfor %}
 						</tbody>

@@ -6,3 +6,5 @@ __pycache__/
 
 # Ignore CSV files
 *.csv
+*.pcap
+cs576/
