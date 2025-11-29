@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file
 import socket
 import csv, os
 import sys
@@ -144,8 +144,22 @@ def webSniff():
                              message=f"Error during capture: {str(e)}",
                              status_type='error')
 
-
-
+@app.route('/download/<filename>')
+def download_file(filename):
+    """Download CSV/log/pcap files"""
+    file_paths = {
+        'saved_devices.csv': 'CSV/saved_devices.csv',
+        'performance_log.csv': 'CSV/performance_log.csv',
+        'output.pcap': 'output.pcap',
+        'scan.log': 'scheduled_logs/scan.log',
+        'performance.log': 'scheduled_logs/performance.log'
+    }
+    
+    file_path = file_paths.get(filename)
+    if file_path and os.path.exists(file_path):
+        return send_file(file_path, as_attachment=True)
+    else:
+        return "File not found", 404
 
 def get_host_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
