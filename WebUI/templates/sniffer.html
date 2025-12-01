@@ -15,7 +15,6 @@
             --accent-2:#a78bfa;
         }
     
-        * { box-sizing: border-box; }
     
         body {
             margin: 0;
@@ -160,13 +159,24 @@
                     <option value="https">HTTPS</option>
                 </select>
             </div>
-            
-            <div class="form-group">
-                <label for="interface">Network Interface:</label>
-                <input type="text" id="interface" name="interface" placeholder="e.g., eth0, wlan0 (leave empty for auto)">
-            </div>
+				<div class="form-group">
+						<label for="device">Target Device (optional):</label>
+								<select id="device" name="device">
+								<option value="">All Devices (Default Interface)</option>
+										{% if devices %}
+										{% for device in devices %}
+								 <option value="{{ device.ip }}">{{ device.hostname }} ({{ device.ip }})</option>
+						{% endfor %}
+				{% endif %}
+    </select>
+</div>
+<div class="form-group">
+    <label for="interface">Or Specify Interface:</label>
+    <input type="text" id="interface" name="interface" placeholder="e.g., eth0, wlan0">
+</div>
             
             <button type="submit" class="button">Start Capture</button>
+		     <a href="{{ url_for('sniffer_analysis') }}" class="link">View Past Captures & Analysis →</a>
         </form>
         
         <div id="status" class="status">
@@ -205,10 +215,6 @@
                 </tr>
             </table>
             
-            <p style="margin-top: 15px;">
-                <a href="/download/capture.pcap" class="button secondary">Download PCAP</a>
-                <a href="/download/protocols.csv" class="button secondary">Download CSV</a>
-            </p>
         </div>
         {% endif %}
     </div>
