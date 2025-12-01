@@ -5,6 +5,7 @@
     <title>Packet Analysis - NetPi Scanner</title>
     <style>
         :root {
+            /* Theme colors */
             --bg:#020617;
             --panel:#0b1120;
             --panel-soft:#0f172a;
@@ -14,7 +15,11 @@
             --accent:#6ee7ff;
             --accent-2:#a78bfa;
         }
+
+        /* Basic reset */
         * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* Page background and base text settings */
         body {
             min-height: 100vh;
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
@@ -25,10 +30,14 @@
                         radial-gradient(circle at 0% 120%, #0f172a 0, transparent 55%),
                         var(--bg);
         }
+
+        /* Max width wrapper */
         .container {
             max-width: 1200px;
             margin: 0 auto;
         }
+
+        /* Top header card */
         .header {
             background: radial-gradient(circle at top left, rgba(148,163,253,0.06), transparent 60%),
                         radial-gradient(circle at bottom right, rgba(45,212,191,0.04), transparent 60%),
@@ -39,6 +48,8 @@
             margin-bottom: 24px;
             box-shadow: 0 26px 80px rgba(15,23,42,0.85);
         }
+
+        /* Main page title */
         h1 {
             font-size: 26px;
             letter-spacing: 0.04em;
@@ -46,7 +57,10 @@
             color: #f9fafb;
             margin-bottom: 8px;
         }
+
         .subtitle { font-size: 14px; color: var(--muted); margin-bottom: 16px; }
+
+        /* Back link to sniffer page */
         .back-link {
             display: inline-block;
             margin-bottom: 16px;
@@ -56,6 +70,7 @@
         }
         .back-link:hover { color: var(--accent); }
         
+        /* Capture selection panel */
         .selector-panel {
             background: var(--panel-soft);
             border: 1px solid rgba(148,163,253,0.25);
@@ -68,11 +83,15 @@
             margin-bottom: 12px;
             color: var(--accent);
         }
+
+        /* Grid of available capture files */
         .capture-list {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 12px;
         }
+
+        /* Single capture item card */
         .capture-item {
             background: rgba(15,23,42,0.95);
             border: 1px solid rgba(148,163,253,0.4);
@@ -89,6 +108,7 @@
             border-color: var(--accent);
             background: linear-gradient(135deg, rgba(110,231,255,0.15), rgba(167,139,250,0.15));
         }
+
         .capture-name {
             font-size: 13px;
             font-weight: 600;
@@ -100,13 +120,15 @@
             color: var(--muted);
         }
         
-        /* Analysis Grid */
+        /* Grid that holds analysis panels */
         .analysis-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
             gap: 20px;
             margin-bottom: 24px;
         }
+
+        /* Generic panel card */
         .panel {
             background: radial-gradient(circle at top left, rgba(148,163,253,0.06), transparent 60%),
                         var(--panel-soft);
@@ -123,7 +145,7 @@
             letter-spacing: 0.05em;
         }
         
-        /* Stats Cards */
+        /* Overview stat cards */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -149,7 +171,7 @@
             letter-spacing: 0.05em;
         }
         
-        /* Protocol Chart */
+        /* Protocol distribution bar chart */
         .protocol-bars {
             margin-top: 12px;
         }
@@ -180,7 +202,7 @@
             transition: width 0.6s ease;
         }
         
-        /* Tables */
+        /* Table styling for IPs, ports, DNS */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -207,8 +229,7 @@
             background: rgba(30,64,175,0.25);
         }
         
-        
-        /* Buttons */
+        /* Buttons for actions (if needed) */
         .button {
             display: inline-flex;
             align-items: center;
@@ -233,7 +254,7 @@
             color: var(--muted);
         }
         
-        /* Empty State */
+        /* Empty state when no analysis is selected */
         .empty-state {
             text-align: center;
             padding: 60px 20px;
@@ -244,6 +265,7 @@
             margin-bottom: 8px;
         }
         
+        /* Responsive tweaks for smaller screens */
         @media (max-width: 768px) {
             .analysis-grid {
                 grid-template-columns: 1fr;
@@ -256,12 +278,14 @@
 </head>
 <body>
     <div class="container">
+        <!-- Top header section with back link and title -->
         <div class="header">
             <a href="{{ url_for('sniffer') }}" class="back-link">← Back to Sniffer</a>
             <h1>Packet Analysis</h1>
             <p class="subtitle">Detailed analysis of captured network traffic</p>
         </div>
         
+        <!-- Capture selection list (shown only if there are .pcap files) -->
         {% if pcap_files %}
         <div class="selector-panel">
             <h2>Select Capture to Analyze</h2>
@@ -283,9 +307,10 @@
         </div>
         {% endif %}
         
+        <!-- Main analysis area -->
         {% if analysis %}
         <div class="analysis-grid">
-            <!-- Overview Stats -->
+            <!-- Overview stats panel -->
             <div class="panel">
                 <h3>Capture Overview</h3>
                 <div class="stats-grid">
@@ -308,7 +333,7 @@
                 </div>
             </div>
             
-            <!-- Protocol Distribution -->
+            <!-- Protocol distribution panel -->
             <div class="panel">
                 <h3>Protocol Distribution</h3>
                 <div class="protocol-bars">
@@ -326,7 +351,7 @@
                 </div>
             </div>
             
-            <!-- Top Talkers (IPs) -->
+            <!-- Top IP addresses panel -->
             <div class="panel">
                 <h3>Top IP Addresses</h3>
                 <table>
@@ -357,7 +382,7 @@
                 </table>
             </div>
             
-            <!-- Top Ports -->
+            <!-- Top ports panel -->
             <div class="panel">
                 <h3>Most Active Ports</h3>
                 <table>
@@ -380,8 +405,8 @@
                 </table>
             </div>
             
+            <!-- DNS queries panel (only shown if there are DNS rows) -->
             {% if analysis.dns_queries %}
-            <!-- DNS Queries -->
             <div class="panel">
                 <h3>DNS Queries</h3>
                 <table>
@@ -404,14 +429,15 @@
             {% endif %}
             
         </div>
-    {% else %}
+        {% else %}
+        <!-- When there is no current analysis selected -->
         <div class="panel">
             <div class="empty-state">
                 <h3>No Analysis Selected</h3>
                 <p>Select a packet capture above to view detailed analysis</p>
             </div>
         </div>
-    {% endif %}
-</div>
+        {% endif %}
+    </div>
 </body>
 </html>
