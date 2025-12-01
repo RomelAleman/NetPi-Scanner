@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <title>Scan Network – NetPi Scanner</title>
+
+    <!-- Page styles and theme colors -->
     <style>
         :root {
+            /* Theme colors */
             --bg:#020617;
             --panel:#0b1120;
             --panel-soft:#0f172a;
@@ -15,8 +18,10 @@
             --accent-2:#a78bfa;
         }
     
+        /* Reset */
         * { box-sizing: border-box; }
     
+        /* Page layout and background */
         body {
             margin: 0;
             min-height: 100vh;
@@ -32,6 +37,7 @@
                         var(--bg);
         }
     
+        /* Main card container */
         .container {
             max-width: 880px;
             width: 100%;
@@ -48,6 +54,7 @@
             backdrop-filter: blur(26px);
         }
     
+        /* Page title */
         h1 {
             margin-top: 0;
             font-size: 22px;
@@ -57,8 +64,11 @@
         }
     
         .subtitle { font-size: 14px; margin-bottom: 20px; color: var(--muted); }
+
+        /* Action card layout */
         .actions { display: flex; flex-wrap: wrap; gap: 16px; }
     
+        /* Single action card */
         .action {
             flex: 1 1 220px;
             border-radius: 16px;
@@ -70,8 +80,9 @@
         }
     
         .action h2 { font-size: 15px; margin: 0 0 6px; }
-        .action p { font-size: 13px; margin: 0 0 10px; color: var(--muted); }
+        .action p  { font-size: 13px; margin: 0 0 10px; color: var(--muted); }
     
+        /* Button style for actions */
         .link {
             display: inline-flex;
             align-items: center;
@@ -94,14 +105,16 @@
             border-color: rgba(148,163,253,0.6);
         }
     
+        /* Saved devices table styles */
         table { width: 100%; border-collapse: collapse; font-size: 12px; }
         thead { background: rgba(15,23,42,1); }
         th, td { padding: 6px 8px; }
         th { text-align: left; color: var(--muted); border-bottom: 1px solid rgba(51,65,85,1); }
         tbody tr:nth-child(even) { background: rgba(15,23,42,0.9); }
-        tbody tr:nth-child(odd) { background: rgba(15,23,42,0.8); }
+        tbody tr:nth-child(odd)  { background: rgba(15,23,42,0.8); }
         tbody tr:hover { background: rgba(30,64,175,0.55); }
     
+        /* Modal overlay for scan progress */
         #scan-modal {
             display: none;
             position: fixed;
@@ -112,6 +125,7 @@
             justify-content: center;
         }
     
+        /* Modal content styling */
         #scan-modal > div {
             background: var(--panel-soft);
             border-radius: 18px;
@@ -120,6 +134,7 @@
             box-shadow: 0 22px 60px rgba(15,23,42,0.95);
         }
     
+        /* Footer text */
         .footer {
             margin-top: auto;
             font-size: 12px;
@@ -128,30 +143,36 @@
             padding-top: 10px;
         }
     
+        /* Link styling */
         .page a, .container a { color: var(--muted) !important; text-decoration: none; }
         .page a:hover, .container a:hover { color: var(--accent-2) !important; }
     
+        /* Mobile padding tweaks */
         @media (max-width:720px){ .container { padding:18px 14px; } }
     </style> 
 </head>
 <body>
+    <!-- Main scan page wrapper -->
     <div class="page container">
+        <!-- Page header -->
         <h1>Scan Network</h1>
         <p class="subtitle">Run a discovery scan or view previously scanned devices.</p>
 
+        <!-- Action area -->
         <div class="actions">
+            <!-- Button to start a new scan -->
             <div class="action">
                 <h2>Scan Network</h2>
                 <p>Run a discovery scan on the configured subnet.</p>
                 <button id="start-scan" class="link" style="border:none; cursor:pointer;">Start Scan</button>
             </div>
-
         </div>
 
-        <!-- Saved devices window -->
+        <!-- Saved devices section -->
         <div style="margin-top:18px;">
             <h2>Saved Devices</h2>
             {% if devices and devices|length > 0 %}
+                <!-- Table of saved devices -->
                 <div style="border:1px solid #ddd; border-radius:4px; padding:8px; background:#fafafa;">
                     <table style="width:100%; border-collapse: collapse;">
                         <thead>
@@ -175,10 +196,12 @@
                     </table>
                 </div>
             {% else %}
+                <!-- If no devices have been scanned yet -->
                 <p><em>No saved devices.</em></p>
             {% endif %}
         </div>
 
+        <!-- Modal shown while scanning / when finished -->
         <div id="scan-modal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center;">
             <div style="background:#fff; padding:20px; border-radius:6px; max-width:420px; margin:0 auto; text-align:center;">
                 <p id="scan-modal-message">Scanning... This may take a while</p>
@@ -188,10 +211,12 @@
             </div>
         </div>
         
+        <!-- Back to home link -->
         <p style="margin-top:12px;"><a href="{{ url_for('index') }}">⬅ Back to Home</a></p>
         <p class="footer">NetPi Scanner – quick actions.</p>
     </div>
 
+    <!-- JavaScript for starting scan and handling modal -->
     <script>
         const startBtn = document.getElementById('start-scan');
         const modal = document.getElementById('scan-modal');
@@ -199,16 +224,19 @@
         const modalActions = document.getElementById('scan-modal-actions');
         const scanOk = document.getElementById('scan-ok');
 
+        // Show modal with a message
         function showModal(msg, showOk=false){
             modalMessage.textContent = msg;
             modal.style.display = 'flex';
             modalActions.style.display = showOk ? 'block' : 'none';
         }
 
+        // Hide modal
         function hideModal(){
             modal.style.display = 'none';
         }
 
+        // When "Start Scan" is clicked, make POST request to /scan
         startBtn.addEventListener('click', () => {
             showModal('Scanning...', false);
 
@@ -226,6 +254,7 @@
                 });
         });
 
+        // Close modal and reload to show updated device list
         scanOk.addEventListener('click', () => {
             hideModal();
             window.location.reload();
