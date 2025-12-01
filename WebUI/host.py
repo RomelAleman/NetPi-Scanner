@@ -1,3 +1,4 @@
+# import libraries and modules
 from flask import Flask, render_template, request, jsonify, send_file, request
 import socket
 import time
@@ -5,9 +6,12 @@ import shutil
 import csv, os
 import sys
 from datetime import datetime
+
+# add parent directory to path so custom modules can be imported
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, parent_dir)
 
+# import custom function modules
 import Functions.scan as scan_module
 import Functions.peformance as perf_module
 import Functions.clear_cache as cache_module
@@ -18,13 +22,14 @@ app = Flask(__name__)
 
 @app.route("/")
 def index():
+    # load homepage
     return render_template("index.html")
-"""
-- scanning network for devices
-"""
+    
+# scan pg; load saved devices (GET) and perform network scanning (POST)
+
 @app.route("/scan", methods=["GET", "POST"])
 def scan():
-    # When GET request, load saved devices and render scan page
+    # GET: load saved devices
     if request.method == 'GET':
         try:
             saved = scan_module.load_devices()
@@ -32,9 +37,8 @@ def scan():
             saved = []
         return render_template("scan.html", devices=saved)
     
-    # When POST request, perform network scan
+    # POST: run network scan
     try:
-        # Load scan configuration
         scan_module.setup_config()
         addr = scan_module.config.get('address', '<address>')
         dns = scan_module.config.get('dns', None)
@@ -43,24 +47,23 @@ def scan():
         devices = scan_module.scan_network(addr, dns, subnet)
         scan_module.save_devices(devices)
 
-        # Return JSON response for frontend
+        # Return number of devices found
         return jsonify(status='ok', devices=len(devices))
     except Exception as e:
         return jsonify(status='error', message=str(e)), 500
 
-"""
-- performance measurement of network devices
-"""
+# performance pg; Load log (GET) and measure device performance (POST)
+
 @app.route("/performance", methods=["GET", "POST"])
 def performance():
-    # When GET request, load performance log and render performance page
+    # GET: load performance CSV if it exists
     if request.method == 'GET':
         perf_rows = []
         perf_file = os.path.join('CSV', 'performance_log.csv')
-        # Load existing performance log if available
+
         if os.path.exists(perf_file):
             try:
-                # Read performance log CSV and populate rows
+                # read the CSV data
                 with open(perf_file, 'r', newline='') as f:
                     reader = csv.DictReader(f)
                     for row in reader:
@@ -70,27 +73,30 @@ def performance():
 
         return render_template("performance.html", perf_rows=perf_rows)
 
+    # POST: run performance tests
     try:
-        # On POST request, perform performance measurement
         devices = perf_module.load_devices()
         if not devices:
             return jsonify(status='error', message='No saved devices'), 400
 
-        # Perform performance measurement on devices
         measured = perf_module.measure_performance(devices)
         perf_module.log_performance_data(measured)
 
-        # Return JSON response for frontend
         return jsonify(status='ok', devices=len(measured))
     except Exception as e:
         return jsonify(status='error', message=str(e)), 500
 
+# reports page
 @app.route("/reports")
 def reports():
     return render_template("reports.html")
+
+# sniffer — Load UI (GET), capture packets and perform MITM if needed (POST)
+
 @app.route("/sniffer", methods=["GET", "POST"], endpoint='sniffer')
 def webSniff(): 
     if request.method == 'GET':
+        # load saved devices from CSV
         devices = []
         devices_file = 'CSV/saved_devices.csv'
         if os.path.exists(devices_file):
@@ -102,97 +108,79 @@ def webSniff():
                             'ip': row.get('IP', row.get('ip', '')),
                             'hostname': row.get('Hostname', row.get('hostname', row.get('IP', 'Unknown')))
                         })
-            except Exception as e:
-                print(f"Error loading devices: {e}")
+            except Exception:
                 devices = []
+
         return render_template("sniffer.html", devices=devices)
     
+    # POST: begin sniffing
     try:
         duration = int(request.form.get('duration', 10))
         protocol_filter = request.form.get('filter', '')
         target = request.form.get('device', '').strip()
-        
+
+        # generate timestamped capture file
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         pcap_filename = f"capture_{timestamp}.pcap"
-        
-        # Get my IP and gateway
+
+        # get self IP and router IP
         my_ip_addr = get_host_ip()
         gateway_ip = None
         config_file = '.config'
-        
+
+        # load router IP from config file
         if os.path.exists(config_file):
             with open(config_file, 'r') as f:
                 for line in f:
                     if line.startswith('router='):
                         gateway_ip = line.split('=')[1].strip()
                         break
-        
-        print(f"\n=== DEBUG: Starting capture ===")
-        print(f"My IP: {my_ip_addr}")
-        print(f"Target IP: {target if target else 'All (no MITM)'}")
-        print(f"Gateway: {gateway_ip}")
-        print(f"Duration: {duration} seconds")
-        
-        # Determine if we need ARP spoofing
+
+        # check if MITM is needed
         needs_mitm = target and target != my_ip_addr and target != ''
-        
+
         if needs_mitm:
-            # Start ARP spoofing
+            # attempt ARP spoofing
             success, message = arp_module.start_arp_spoof(target, gateway_ip)
             if not success:
                 return render_template("sniffer.html", 
-                                     message=f"ARP Spoof Error: {message}",
-                                     status_type='error',
-                                     devices=[])
-            print(f"✓ ARP spoofing started")
-            # Give ARP spoofing time to take effect
+                                      message=f"ARP Spoof Error: {message}",
+                                      status_type='error',
+                                      devices=[])
+            # allow time for poisoning
             time.sleep(3)
-        
+
         try:
-            # Capture packets
-            print(f"Starting packet capture for {duration} seconds...")
+            # sniff packets for duration
             sniff_module.sniffer(pcap_filename, time=duration)
-            print(f"✓ Capture complete")
         finally:
-            # Always stop ARP spoofing when done
+            # always stop ARP spoofing afterward
             if needs_mitm:
-                print("Stopping ARP spoofing...")
                 arp_module.stop_arp_spoof()
-                print("✓ ARP spoofing stopped")
-        
-        # Create captures directory
+
+        # move capture to folder
         os.makedirs('captures', exist_ok=True)
-        
-        # Move PCAP to captures directory
         pcap_path = f'captures/{pcap_filename}'
         shutil.move(pcap_filename, pcap_path)
-        
-        # *** CRITICAL: Filter BEFORE analyzing ***
+
+        # filter MITM traffic first
         if needs_mitm:
-            print(f"Filtering MITM traffic for {target}...")
             sniff_module.filter_mitm_traffic(pcap_path, target)
-        
-        # NOW analyze the (potentially filtered) pcap
-        print(f"Analyzing PCAP: {pcap_path}")
+
+        # analyze capture
         sniff_module.analyze_pcap(pcap_path)
-        
-        # Move CSV files to captures directory with timestamp
+
+        # move generated CSVs with timestamp
         csv_files = ['protocols.csv', 'top_ips.csv', 'top_ports.csv', 'dns_queries.csv']
         for csv_file in csv_files:
             if os.path.exists(csv_file):
                 new_name = csv_file.replace('.csv', f'_{timestamp}.csv')
                 shutil.move(csv_file, f'captures/{new_name}')
-        
-        # Read the stats from the timestamped CSV
-        stats = {
-            'total': 0,
-            'tcp': 0,
-            'udp': 0,
-            'icmp': 0,
-            'arp': 0
-        }
-        
+
+        # read protocol stats from CSV
+        stats = {'total': 0, 'tcp': 0, 'udp': 0, 'icmp': 0, 'arp': 0}
         protocols_csv = f'captures/protocols_{timestamp}.csv'
+
         with open(protocols_csv, 'r') as f:
             reader = csv.DictReader(f)
             for row in reader:
@@ -201,132 +189,114 @@ def webSniff():
                 stats['total'] += count
                 if proto in stats:
                     stats[proto] = count
-        
-        # If a protocol filter was selected, filter the packets
+
+        # apply protocol filter if selected
         if protocol_filter:
-            print(f"Applying protocol filter: {protocol_filter}")
             sniff_module.filter_packets(pcap_path, protocol_filter)
-        
+
+        # note if MITM mode used
         mitm_note = f" (MITM: {target})" if needs_mitm else ""
-        
+
+        # return results
         return render_template("sniffer.html", 
                              stats=stats, 
                              message=f"Successfully captured {stats['total']} packets{mitm_note}",
                              status_type='success',
                              pcap_file=pcap_filename,
                              devices=[])
-    
+
     except Exception as e:
-        # Emergency cleanup
+        # stop ARP spoofing if needed
         try:
             arp_module.stop_arp_spoof()
         except:
             pass
-        
-        import traceback
-        traceback.print_exc()
+
         return render_template("sniffer.html", 
                              message=f"Error: {str(e)}",
                              status_type='error',
                              devices=[])
 
+# sniffer analysis; Load and analyze selected PCAP file
 
-@app.route("/sniffer/analysis", methods = ["GET", "POST"], endpoint="sniffer_analysis")
+@app.route("/sniffer/analysis", methods=["GET", "POST"], endpoint="sniffer_analysis")
 def sniffer_analysis():
-    print(f"\n=== ANALYSIS DEBUG ===")
+    # ensure captures directory exists
     captures_dir = 'captures'
     if not os.path.exists(captures_dir):
         os.makedirs(captures_dir)
-    
+
+    # load list of captured PCAP files
     pcap_files = [f for f in os.listdir(captures_dir) if f.endswith('.pcap')]
-    pcap_files.sort(reverse=True)  # get most recent file 
-    
+    pcap_files.sort(reverse=True)
+
     analysis_data = None
     filename = request.args.get('filename')
-    if filename and filename in pcap_files:
-        print("using selected file")
-    elif pcap_files:
-        # Default to most recent
+
+    # use selected or most recent file
+    if not filename and pcap_files:
         filename = pcap_files[0]
-        print(f"Analyzing most recent file: {filename}")
-    
-    # Now analyze the selected filename
-    if filename:  # <-- CHANGE from "if pcap_files:" to "if filename:"
-        print(f"Analyzing most recent file: {filename}")
-        
+
+    if filename:
         pcap_path = os.path.join(captures_dir, filename)
-        
-        # Extract timestamp from filename
+
+        # extract timestamp to find matching CSV files
         timestamp = filename.replace('capture_', '').replace('.pcap', '')
-        
-        # CSV filenames
         protocols_csv = f'protocols_{timestamp}.csv'
         ips_csv = f'top_ips_{timestamp}.csv'
         ports_csv = f'top_ports_{timestamp}.csv'
         dns_csv = f'dns_queries_{timestamp}.csv'
-        
-        # Check if analysis CSVs exist, if not, run analysis
+
+        # generate analysis if CSVs not found
         if not os.path.exists(f'captures/{protocols_csv}'):
-            print(f"Generating analysis for {filename}...")
             sniff_module.analyze_pcap(pcap_path)
-            # Move generated CSVs
             for csv_file in ['protocols.csv', 'top_ips.csv', 'top_ports.csv', 'dns_queries.csv']:
                 if os.path.exists(csv_file):
                     new_name = csv_file.replace('.csv', f'_{timestamp}.csv')
                     shutil.move(csv_file, f'captures/{new_name}')
-        
-        # Read protocol data
+
+        # read protocols CSV
         protocols = []
         total_packets = 0
-        protocols_path = f'captures/{protocols_csv}'
-        
-        if os.path.exists(protocols_path):
-            with open(protocols_path, 'r') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    count = int(row['Count'])
-                    total_packets += count
-                    protocols.append(row)
-            
-            # Add percentages
-            for proto in protocols:
-                proto['Percentage'] = round((int(proto['Count']) / total_packets * 100), 1) if total_packets > 0 else 0
-        
-        # Read IP data
+        with open(f'captures/{protocols_csv}', 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                count = int(row['Count'])
+                total_packets += count
+                protocols.append(row)
+
+        # add percentage field
+        for proto in protocols:
+            proto['Percentage'] = round((int(proto['Count']) / total_packets * 100), 1) if total_packets > 0 else 0
+
+        # read top IPs
         top_ips = []
         unique_ips = set()
-        ips_path = f'captures/{ips_csv}'
-        
-        if os.path.exists(ips_path):
-            with open(ips_path, 'r') as f:
+        if os.path.exists(f'captures/{ips_csv}'):
+            with open(f'captures/{ips_csv}', 'r') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
                     top_ips.append(row)
                     unique_ips.add(row['IP Address'])
-        
-        # Read port data
+
+        # read top ports
         top_ports = []
         unique_ports = set()
-        ports_path = f'captures/{ports_csv}'
-        
-        if os.path.exists(ports_path):
-            with open(ports_path, 'r') as f:
+        if os.path.exists(f'captures/{ports_csv}'):
+            with open(f'captures/{ports_csv}', 'r') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
                     top_ports.append(row)
                     unique_ports.add(row['Port'])
-        
-        # Read DNS data
+
+        # read DNS queries
         dns_queries = []
-        dns_path = f'captures/{dns_csv}'
-        
-        if os.path.exists(dns_path):
-            with open(dns_path, 'r') as f:
+        if os.path.exists(f'captures/{dns_csv}'):
+            with open(f'captures/{dns_csv}', 'r') as f:
                 reader = csv.DictReader(f)
                 dns_queries = list(reader)
-        
-        # Generate insights
-        
+
+        # combine analysis data
         analysis_data = {
             'filename': filename,
             'total_packets': total_packets,
@@ -341,16 +311,16 @@ def sniffer_analysis():
             'ports_csv': ports_csv,
             'dns_csv': dns_csv if dns_queries else None
         }
-    
+
     return render_template("sniffer_analysis.html", 
                          pcap_files=pcap_files,
                          analysis=analysis_data,
                          selected_file=filename)
-    
-    # Get list of all saved captures
+
+# download files
 @app.route('/download/<filename>')
 def download_file(filename):
-    """Download CSV/log/pcap files"""
+    # map filenames to storage paths
     file_paths = {
         'saved_devices.csv': 'CSV/saved_devices.csv',
         'performance_log.csv': 'CSV/performance_log.csv',
@@ -365,6 +335,7 @@ def download_file(filename):
     else:
         return "File not found", 404
 
+# helper; get local machine's IP
 def get_host_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.connect(("1.1.1.1", 80))
@@ -372,6 +343,7 @@ def get_host_ip():
     s.close()
     return ip
 
+# start web UI
 def begin_web_ui():
     host_ip = get_host_ip()
     print(f"Starting Web UI on http://{host_ip}:1234")
