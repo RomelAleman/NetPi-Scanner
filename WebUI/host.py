@@ -322,11 +322,11 @@ def sniffer_analysis():
 def download_file(filename):
     # map filenames to storage paths
     file_paths = {
-        'saved_devices.csv': 'CSV/saved_devices.csv',
-        'performance_log.csv': 'CSV/performance_log.csv',
-        'output.pcap': 'output.pcap',
-        'scan.log': 'scheduled_logs/scan.log',
-        'performance.log': 'scheduled_logs/performance.log'
+        'saved_devices.csv': os.path.join(parent_dir, 'CSV/saved_devices.csv'),
+        'performance_log.csv': os.path.join(parent_dir, 'CSV/performance_log.csv'),
+        'output.pcap': os.path.join(parent_dir, 'Functions/output.pcap'),
+        'scan.log': os.path.join(parent_dir, 'scheduled_logs/scan.log'),
+        'performance.log': os.path.join(parent_dir, 'scheduled_logs/performance.log')
     }
     
     file_path = file_paths.get(filename)
